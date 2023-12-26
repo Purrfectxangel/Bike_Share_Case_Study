@@ -1,0 +1,189 @@
+---
+title: "Project: How Does a Bike-Share Navigate Speedy Success?"
+subtitle: |
+   "A Case Study on Bike-Share Company"
+author: "Lihan Vicky Tu"
+
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+Date: October,2023 
+
+Tool Used: R/R Studio
+
+
+## Scenario
+You are a junior data analyst working in the marketing analyst team at Cyclistic, a bike-share company in Chicago. The director of marketing believes the company’s future success depends on maximizing the number of annual memberships. Therefore, your team wants to understand how casual riders and annual members use Cyclistic bikes differently. From these insights, your team will design a new marketing strategy to convert casual riders into annual members.
+
+## Question:
+How do annual members and casual riders use Cyclistic bikes differently?
+
+## Data
+Data Source: Divvy Trip Data that are available to the public
+
+Data URL: https://divvy-tripdata.s3.amazonaws.com/index.html
+
+Data Date Range: January, 2023 to September, 2023
+
+Data Quality: The data has already been inspected processed by Divvy to remove trips that are taken by staff during inspections as well as trips below 60 seconds because trips below 60 seconds in lengths tend to be a result of false docking practices by the users. 
+
+Data Privacy: Per Divvy's Data License Agreement, I am allowed to access, analyze, copy, modify and distribute this data while only using data as source material in analysis, reports or studies for non-commercial purposes.
+
+The data is organized into the following columns: ride id, rideable type, time started at, time ended at, start station name, start station id, end station name, end station id, start latitutde, end longitude, end latitude, end longitude, member type.
+
+## Data Processing:
+Now to load the tidyverse library to continue processing the data and proceed with the study:
+```{r loading packages}
+ library('tidyverse')
+```
+
+
+Load data for processing:
+```{r loading dataset}
+Bikeshare2023 <- read.csv('/Users/Vicky/Desktop/BikeShare2023.csv')
+summary(Bikeshare2023)
+```
+
+Now I will convert the started_at and ended_at columns into date-time format and find ride_length as a new column for later analysis:
+```{r find ride_length}
+Bikeshare2023[['ended_at']] <- strptime(Bikeshare2023[['ended_at']], format = "%Y-%m-%d %H:%M:%S")
+Bikeshare2023[['started_at']] <- strptime(Bikeshare2023[['started_at']], format = "%Y-%m-%d %H:%M:%S")
+Bikeshare2023$ride_length <- difftime(Bikeshare2023$ended_at, Bikeshare2023$started_at)
+#Bikeshare2023$ride_length <- seconds_to_period(Bikeshare2023[['ride_length']])
+summary(Bikeshare2023)
+```
+
+
+I will also create a new column indicating which day of the week the rides take place:
+```{r find day_of_week}
+Bikeshare2023$day_of_week <- wday(Bikeshare2023$started_at)
+summary(Bikeshare2023)
+```
+
+
+## Analyzing Data:
+Now to find the following descriptive statistics needed for the entire dataset:  
+1. mean ride_length  
+2. max ride_length  
+3. mode of day_of_week 
+
+To find mean of ride_length:
+```{r mean of ride_length}
+AverageRideLength <- seconds_to_period(mean(Bikeshare2023$ride_length, na.rm = TRUE))
+```
+
+To find max of ride_length:
+```{r max of ride_length}
+MaxRideLength <- seconds_to_period(max(Bikeshare2023$ride_length, na.rm = TRUE))
+```
+
+To find mode of day_of_week:
+```{r mode of day_of_week}
+# Create mode() function to calculate mode
+mode <- function(x, na.rm = FALSE) {
+  
+  if(na.rm){ #if na.rm is TRUE, remove NA values from input x
+    x = x[!is.na(x)]
+  }
+  
+  val <- unique(x)
+  return(val[which.max(tabulate(match(x, val)))])
+}
+ModeTimeofWeek <- mode(Bikeshare2023$day_of_week, na.rm = TRUE)
+```
+
+Output the Statictics:
+```{r output}
+print("Mean of ride_length: ")
+AverageRideLength
+print("Max of ride_length:")
+MaxRideLength
+print("Mode of ride_length:")
+ModeTimeofWeek
+```
+
+Now I will summary the data based on member_casual and day_of_week. I will first find the average ride_length and number of rides per member_casual:
+```{r summarize based only on member_casual}
+Bikeshare2023%>%
+  group_by(member_casual) %>% 
+  summarize(AverageRideLength = seconds_to_period(mean(ride_length, na.rm = TRUE)))
+
+
+Bikeshare2023%>%
+  group_by(member_casual) %>% 
+  count()
+```
+
+I will then find the average ride_length and number of rides per day of the week:
+```{r summarize based only on day_of_week}
+Bikeshare2023%>%
+  group_by(day_of_week) %>% 
+  summarize(AverageRideLength = seconds_to_period(mean(ride_length, na.rm = TRUE)))
+
+Bikeshare2023%>%
+  group_by(day_of_week) %>% 
+  count()
+```
+
+
+Now I will find the average ride_length and number of rides based on both member_casual and day of the week:
+```{r summarize based on member_casual and day_of_week}
+Bikeshare2023%>%
+  group_by(day_of_week, member_casual) %>% 
+  summarize(AverageRideLength = seconds_to_period(mean(ride_length, na.rm = TRUE)))
+
+Bikeshare2023%>%
+  group_by(day_of_week, member_casual) %>% 
+  count()
+```
+
+## Data Visualization
+The two charts below show the average ride_length and number of rides based on member_casual
+```{r chart based only on member_casual}
+ggplot(data=Bikeshare2023, aes(x = member_casual, y = ride_length)) +
+  geom_bar(stat="summary", fun.y='mean', fill = "steelblue", width=0.5) + ggtitle("Average ride_length by member_casual")
+
+ggplot(data=Bikeshare2023, aes(member_casual)) +
+  geom_bar(fill = "steelblue", width = 0.5) + ggtitle("number of rides by member_casual")
+```
+
+The two charts below show the average ride_length and number of rides based on day_of_week
+```{r chart based only on day_of_week}
+ggplot(data=Bikeshare2023, aes(x = day_of_week, y = ride_length)) +
+  geom_bar(stat="summary", fun.y='mean', fill = "steelblue") + ggtitle("Average ride_length by day_of_week")
+
+ggplot(data=Bikeshare2023, aes(day_of_week)) +
+  geom_bar(fill = "steelblue") + ggtitle("number of rides by day_of_week")
+```
+
+The chart below shows the comparison of average ride_length between member_casual by day_of_week
+```{r chart average_ride_length comparison}
+ggplot(Bikeshare2023, aes(x = day_of_week, y = ride_length, fill = member_casual)) + 
+  geom_bar(stat = "summary", fun.y='mean') + ggtitle("Average ride_length between member_casual by day_of_week")
+```
+
+The chart below shows the comparison of number of rides between member_casual by day_of_week
+```{r chart number of rides comparison}
+ggplot(Bikeshare2023, aes(x = day_of_week, fill = member_casual)) + 
+  geom_bar()+ ggtitle("Number of rides between member_casual by day_of_week")
+```
+
+## Result and Recommendations
+The data shows that even though members take many more rides than casual riders, the average ride length for casual riders is much longer than that of the members.  
+
+Both members and casual riders tend to do longer rides during the weekends. The difference by casual_member and by day of the week seems to revolve more around the number of rides:  
+
+Overall the number of rides' lowest point is on monday and steadily increasing as the week goes by and peak on saturday. The key difference here between casual riders and members is that casual riders do more rides on weekends while members do more rides on weekdays.  
+
+Based on the result, I would offer the 3 following recommendations:  
+
+1. Conduct more in-depth analysis on the bike riding tendencies for casual riders on weekends. Since they do more rides on weekends and they tend to do longer rides, it would be interesting to get more insights on potential purposes of their trips to get to know their needs better.  
+
+2. Since overall number of rides peak on Saturday, it is reasonable to consider offer a Saturday-ridership package and increase bike maintenance and services to make sure that there will be sufficient bikes for riders to access on Saturdays.  
+
+3. Since all riders tend to do shorter rides on weekdays and longer rides on weekends, I would recommend increase the the amount of time a rider can use a bike for during a single ride on weekends.  
+
+Since there is geographical location data for each ride, further more detailed analysis can be conducted to get more idea of potentially what the riders are using these bikes for to better understand their needs. 
+
